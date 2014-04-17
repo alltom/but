@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>But...?</title>
+    <!-- <link rel="stylesheet" href="style.css" /> -->
+    <style>
+    body {
+      font-size: 120%;
+    }
+    textarea {
+      width: 40em;
+      height: 4em;
+      font-size: 100%;
+    }
+    textarea#export {
+      font-size: 8pt;
+      margin-top: 100px;
+    }
+    </style>
+  </head>
+  <body>
+    <!-- <h1>But&#8230;?</h1> -->
+    <div id="container">
+      Loading&#8230;
+    </div>
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/underscore.min.js"></script>
+    <script src="/js/react/react.min.js"></script>
+    <script src="/js/react/JSXTransformer.js"></script>
+    <script src="/js/leviroutes.min.js"></script>
+    <script type="text/jsx">
+      /** @jsx React.DOM */
+
+      function handlePushStateClick(e) {
+        e.preventDefault();
+        window.history.pushState(undefined, undefined, e.target.pathname);
+        app.test(document.location.pathname);
+        return false;
+      }
+
+      function nodePath(node) {
+        if (node.parentID == null) {
+          return '/';
+        } else {
+          return '/n/' + node.id;
+        }
+      }
+
+      var ParentNode = React.createClass({
+        render: function () {
+          return (
+            <div>
+              <h2><a href={nodePath(this.props.node)} onClick={handlePushStateClick}>{this.props.node.question}</a></h2>
+              <p>{this.props.node.answer}</p>
+            </div>
+          );
+        }
+      });
+
+      var Node = React.createClass({
+        getInitialState: function () {
+          return { editing: false };
+        },
+        editClicked: function (e) {
+          this.setState({ editing: true }, function () {
+            autoGrowTextArea(this.refs.answerTextArea.getDOMNode());
+            this.refs.answerTextArea.getDOMNode().focus();
+          });
+        },
+        cancelClicked: function (e) {
+          e.preventDefault();
+          this.setState({ editing: false });
+        },
+        answerEditSubmitted: function (e) {
+          e.preventDefault();
+          this.props.node.answer = e.target.elements[0].value;
+          this.setState({ editing: false });
+          this.props.onEdit();
+        },
+        newQuestionSubmitted: function (e) {
+          e.preventDefault();
+          this.props.onCreate({ question: e.target.elements[0].value, parentID: this.props.node.id });
+          e.target.elements[0].value = '';
+        },
+        render: function () {
+          var childNodes = this.props.childNodes.map(function (node) {
+            return <li><a href={nodePath(node)} onClick={handlePushStateClick}>{node.question}</a></li>;
+          }.bind(this));
+          childNodes.push(
+            <li>
+              <form onSubmit={this.newQuestionSubmitted}>
+                Okay, but&#8230; <input type="text" placeholder="Why is that?" />
+                <input type="submit" value="Ask" />
+              </form>
+            </li>
+          );
+          var answerNode;
+          if (this.state.editing) {
+            answerNode =
+              <form onSubmit={this.answerEditSubmitted}>
+                <textarea ref="answerTextArea" defaultValue={this.props.node.answer} onChange={autoGrowTextAreaChanged} /><br />
+                <button onClick={this.cancelClicked}>Cancel</button>
+                <input type="submit" value="Save" />
+              </form>
+            ;
+          } else {
+            answerNode =
+              <p>
+                {formattedTextNode(this.props.node.answer)} <button onClick={this.editClicked}>Edit &rarr;</button>
+              </p>
+            ;
+          }
+          return (
+            <div>
+              <h2>{this.props.node.question}</h2>
+              {answerNode}
+              <h3>Questions</h3>
+              <ul>{childNodes}</ul>
+            </div>
+          );
+        }
+      });
+
+      var Tree = React.createClass({
+        nodeCreated: function (values) {
+          var node = {
+            id: String(Math.random()).replace(/[^0-9]/g, ''),
+            question: ('question' in values) ? values.question : '',
+            answer: ('answer' in values) ? values.answer : '',
+            parentID: ('parentID' in values) ? values.parentID : '',
+          };
+          this.props.tree.nodes.push(node);
+          this.setState({});
+          save(this.props.tree);
+        },
+        edited: function () {
+          this.setState({});
+          save(this.props.tree);
+        },
+        _nodeWithID: function (id) {
+          return this.props.tree.nodes.filter(function (node) { return node.id === id })[0];
+        },
+        _nodesWithParentID: function (id) {
+          return this.props.tree.nodes.filter(function (node) { return node.parentID === id });
+        },
+        _parentNodesOfNodeWithID: function (id) {
+          var parents = [];
+          while (id != null) {
+            var parent = this._nodeWithID(id);
+            parents.push(parent);
+            id = parent.parentID;
+          }
+          return parents.reverse();
+        },
+        render: function () {
+          var focusedNode = this._nodeWithID(this.props.focusedNodeId);
+          var parents = this._parentNodesOfNodeWithID(focusedNode.parentID);
+          var children = this._nodesWithParentID(focusedNode.id);
+
+          var parentNodes = parents.map(function (node) {
+            return <ParentNode node={node} key={node.id} />;
+          }.bind(this));
+
+          return (
+            <div>
+              {parentNodes}
+              <Node node={focusedNode} childNodes={children} key={focusedNode.id} onCreate={this.nodeCreated} onEdit={this.edited} />
+              <textarea id="export" value={JSON.stringify(this.props.tree, null, 2)} />
+            </div>
+          );
+        }
+      });
+
+      function load() {
+        var json = localStorage.getItem("tree");
+        if (json) {
+          return JSON.parse(json);
+        } else {
+          return { nodes: [{ id: 'root', question: '<*>', answer: '', parentID: null }], rootID: 'root' };
+        }
+      }
+
+      function save(tree) {
+        localStorage.setItem("tree", JSON.stringify(tree));
+      }
+
+      function render(focusedNodeId) {
+        React.renderComponent(
+          <div>
+            <Tree tree={tree} focusedNodeId={focusedNodeId} />
+          </div>,
+          document.getElementById('container')
+        );
+      }
+
+      function formattedTextNode(text) {
+        var nodes = text.split('\n');
+        for (var i = 1; i < nodes.length; i += 2) {
+          nodes.splice(i, 0, <br />);
+        }
+        return nodes;
+      }
+
+      function autoGrowTextAreaChanged(e) {
+        autoGrowTextArea(e.target);
+      }
+
+      function autoGrowTextArea(textarea) {
+        if (textarea.scrollHeight > textarea.clientHeight) {
+          textarea.style.height = textarea.scrollHeight + "px";
+        }
+      }
+
+      var tree = load();
+      var app = new routes();
+      app.get('/', function () {
+        render(tree.rootID);
+      });
+      app.get('/n/:nodeID', function (request) {
+        render(request.params.nodeID);
+      });
+    </script>
+  </body>
+</html>
