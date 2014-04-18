@@ -71,11 +71,16 @@
 
       var Node = React.createClass({
         getInitialState: function () {
-          return { editingQuestion: this.props.startEditingQuestion, editingAnswer: false };
+          return {
+            editingQuestion: this.props.startEditingQuestion,
+            editingAnswer: this.props.startEditingAnswer,
+          };
         },
         componentDidMount: function () {
           if (this.props.startEditingQuestion) {
             this.refs.questionTextArea.getDOMNode().focus();
+          } else if (this.props.startEditingAnswer) {
+            this.refs.answerTextArea.getDOMNode().focus();
           }
         },
         editQuestionClicked: function (e) {
@@ -163,7 +168,11 @@
           } else {
             answerNode =
               <p>
-                {formattedTextNode(this.props.node.answer)} <button onClick={this.editAnswerClicked}>Edit &rarr;</button>
+                {formattedTextNode(this.props.node.answer)}
+                {' '}<button onClick={this.editAnswerClicked}>
+                  {this.props.node.answer == '' ? 'Edit Answer' : 'Edit'}
+                  &rarr;
+                </button>
               </p>
             ;
           }
@@ -224,10 +233,12 @@
             clearHash();
           }
 
+          var editAnswer = focusedNode.answer == '';
+
           return (
             <div>
               {parentNodes}
-              <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} onCreate={this.nodeCreated} onEdit={this.edited} />
+              <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} startEditingAnswer={editAnswer} onCreate={this.nodeCreated} onEdit={this.edited} />
               <textarea id="export" value={JSON.stringify(this.props.tree, null, 2)} />
             </div>
           );
