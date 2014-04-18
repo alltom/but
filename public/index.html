@@ -65,7 +65,7 @@
           return (
             <div>
               <h2><a href={nodePath(this.props.node)} onClick={handlePushStateClick}>{this.props.node.question.trim() == '' ? '(empty question)' : this.props.node.question}</a></h2>
-              <p>{this.props.node.answer}</p>
+              <p>{formattedTextNode(this.props.node.answer)}</p>
             </div>
           );
         }
