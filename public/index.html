@@ -8,6 +8,9 @@
     body {
       font-size: 120%;
     }
+    h2 input {
+      font-size: 100%;
+    }
     textarea {
       width: 40em;
       height: 4em;
@@ -34,9 +37,17 @@
 
       function handlePushStateClick(e) {
         e.preventDefault();
-        window.history.pushState(undefined, undefined, e.target.pathname);
-        app.test(document.location.pathname);
+        pushPath(e.target.pathname);
         return false;
+      }
+
+      function pushPath(path) {
+        window.history.pushState(undefined, undefined, path);
+        app.test(document.location.pathname);
+      }
+
+      function clearHash() {
+        window.history.pushState('', document.title, window.location.pathname);
       }
 
       function nodePath(node) {
@@ -60,23 +71,46 @@
 
       var Node = React.createClass({
         getInitialState: function () {
-          return { editing: false };
+          return { editingQuestion: this.props.startEditingQuestion, editingAnswer: false };
         },
-        editClicked: function (e) {
-          this.setState({ editing: true }, function () {
+        componentDidMount: function () {
+          if (this.props.startEditingQuestion) {
+            this.refs.questionTextArea.getDOMNode().focus();
+          }
+        },
+        editQuestionClicked: function (e) {
+          this.setState({ editingQuestion: true }, function () {
+            this.refs.questionTextArea.getDOMNode().focus();
+          });
+        },
+        editAnswerClicked: function (e) {
+          this.setState({ editingAnswer: true }, function () {
             autoGrowTextArea(this.refs.answerTextArea.getDOMNode());
             this.refs.answerTextArea.getDOMNode().focus();
           });
         },
-        cancelClicked: function (e) {
+        cancelEditQuestionClicked: function (e) {
           e.preventDefault();
-          this.setState({ editing: false });
+          this.setState({ editingQuestion: false });
+        },
+        cancelEditAnswerClicked: function (e) {
+          e.preventDefault();
+          this.setState({ editingAnswer: false });
+        },
+        questionEditSubmitted: function (e) {
+          e.preventDefault();
+          this.props.node.question = e.target.elements[0].value;
+          this.setState({ editingQuestion: false });
+          this.props.onEdit();
         },
         answerEditSubmitted: function (e) {
           e.preventDefault();
           this.props.node.answer = e.target.elements[0].value;
-          this.setState({ editing: false });
+          this.setState({ editingAnswer: false });
           this.props.onEdit();
+        },
+        childEditClicked: function (node) {
+          pushPath(nodePath(node) + '#editQuestion');
         },
         newQuestionSubmitted: function (e) {
           e.preventDefault();
@@ -85,8 +119,14 @@
         },
         render: function () {
           var childNodes = this.props.childNodes.map(function (node) {
-            return <li><a href={nodePath(node)} onClick={handlePushStateClick}>{node.question}</a></li>;
+            return (
+              <li>
+                <a href={nodePath(node)} onClick={handlePushStateClick}>{node.question}</a>
+                {' '}<button onClick={this.childEditClicked.bind(this, node)}>Edit &rarr;</button>
+              </li>
+            );
           }.bind(this));
+
           childNodes.push(
             <li>
               <form onSubmit={this.newQuestionSubmitted}>
@@ -95,25 +135,42 @@
               </form>
             </li>
           );
-          var answerNode;
-          if (this.state.editing) {
+
+          var questionNode, answerNode;
+          if (this.state.editingQuestion) {
+            questionNode =
+              <form onSubmit={this.questionEditSubmitted}>
+                <h2>
+                  <input ref="questionTextArea" defaultValue={this.props.node.question} />
+                  <input type="button" value="Cancel" onClick={this.cancelEditQuestionClicked} />
+                  <input type="submit" value="Save" />
+                </h2>
+              </form>
+            ;
+          } else {
+            questionNode =
+              <h2>{this.props.node.question} <button onClick={this.editQuestionClicked}>Edit &rarr;</button></h2>
+            ;
+          }
+          if (this.state.editingAnswer) {
             answerNode =
               <form onSubmit={this.answerEditSubmitted}>
                 <textarea ref="answerTextArea" defaultValue={this.props.node.answer} onChange={autoGrowTextAreaChanged} /><br />
-                <button onClick={this.cancelClicked}>Cancel</button>
+                <input type="button" value="Cancel" onClick={this.cancelEditAnswerClicked} />
                 <input type="submit" value="Save" />
               </form>
             ;
           } else {
             answerNode =
               <p>
-                {formattedTextNode(this.props.node.answer)} <button onClick={this.editClicked}>Edit &rarr;</button>
+                {formattedTextNode(this.props.node.answer)} <button onClick={this.editAnswerClicked}>Edit &rarr;</button>
               </p>
             ;
           }
+
           return (
             <div>
-              <h2>{this.props.node.question}</h2>
+              {questionNode}
               {answerNode}
               <h3>Questions</h3>
               <ul>{childNodes}</ul>
@@ -162,10 +219,15 @@
             return <ParentNode node={node} key={node.id} />;
           }.bind(this));
 
+          if (window.location.hash == '#editQuestion') {
+            var editQuestion = true;
+            clearHash();
+          }
+
           return (
             <div>
               {parentNodes}
-              <Node node={focusedNode} childNodes={children} key={focusedNode.id} onCreate={this.nodeCreated} onEdit={this.edited} />
+              <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} onCreate={this.nodeCreated} onEdit={this.edited} />
               <textarea id="export" value={JSON.stringify(this.props.tree, null, 2)} />
             </div>
           );
