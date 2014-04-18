@@ -64,7 +64,7 @@
         render: function () {
           return (
             <div>
-              <h2><a href={nodePath(this.props.node)} onClick={handlePushStateClick}>{this.props.node.question}</a></h2>
+              <h2><a href={nodePath(this.props.node)} onClick={handlePushStateClick}>{this.props.node.question.trim() == '' ? '(empty question)' : this.props.node.question}</a></h2>
               <p>{this.props.node.answer}</p>
             </div>
           );
@@ -160,7 +160,10 @@
             ;
           } else {
             questionNode =
-              <h2>{this.props.node.question} <button onClick={this.editQuestionClicked}>Edit &rarr;</button></h2>
+              <h2>
+                {this.props.node.question.trim() == '' ? '(empty question)' : this.props.node.question}
+                {' '}<button onClick={this.editQuestionClicked}>Edit &rarr;</button>
+              </h2>
             ;
           }
           if (this.state.editingAnswer) {
@@ -176,7 +179,7 @@
               <p>
                 {formattedTextNode(this.props.node.answer)}
                 {' '}<button onClick={this.editAnswerClicked}>
-                  {this.props.node.answer == '' ? 'Edit Answer' : 'Edit'}
+                  {this.props.node.answer.trim() == '' ? 'Edit Answer' : 'Edit'}
                   &rarr;
                 </button>
               </p>
