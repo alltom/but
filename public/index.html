@@ -34,6 +34,7 @@
     <script src="/js/react/react.min.js"></script>
     <script src="/js/react/JSXTransformer.js"></script>
     <script src="/js/leviroutes.min.js"></script>
+    <script src="/js/markdown.min.js"></script>
     <script type="text/jsx">
       /** @jsx React.DOM */
 
@@ -65,7 +66,7 @@
           return (
             <div>
               <h2><a href={nodePath(this.props.node)} onClick={handlePushStateClick}>{this.props.node.question.trim() == '' ? '(empty question)' : this.props.node.question}</a></h2>
-              <p>{formattedTextNode(this.props.node.answer)}</p>
+              {formattedTextNode(this.props.node.answer)}
             </div>
           );
         }
@@ -175,15 +176,17 @@
               </form>
             ;
           } else {
-            answerNode =
-              <p>
+            answerNode = (
+              <div>
                 {formattedTextNode(this.props.node.answer)}
-                {' '}<button onClick={this.editAnswerClicked}>
-                  {this.props.node.answer.trim() == '' ? 'Edit Answer' : 'Edit'}
-                  &rarr;
-                </button>
-              </p>
-            ;
+                <p>
+                  {' '}<button onClick={this.editAnswerClicked}>
+                    {this.props.node.answer.trim() == '' ? 'Edit Answer' : 'Edit'}
+                    &rarr;
+                  </button>
+                </p>
+              </div>
+            );
           }
 
           return (
@@ -379,11 +382,7 @@
       }
 
       function formattedTextNode(text) {
-        var nodes = text.split('\n');
-        for (var i = 1; i < nodes.length; i += 2) {
-          nodes.splice(i, 0, <br />);
-        }
-        return nodes;
+        return <div dangerouslySetInnerHTML={{ __html: markdown.toHTML(text) }} />;
       }
 
       function autoGrowTextAreaChanged(e) {
