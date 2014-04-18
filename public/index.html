@@ -330,7 +330,7 @@
       });
 
       function load() {
-        var json = localStorage.getItem("tree");
+        var json = localStorage.getItem('tree');
         if (json) {
           return JSON.parse(json);
         } else {
@@ -339,7 +339,7 @@
       }
 
       function save(tree) {
-        localStorage.setItem("tree", JSON.stringify(tree));
+        localStorage.setItem('tree', JSON.stringify(tree));
       }
 
       function reset() {
