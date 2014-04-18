@@ -16,9 +16,11 @@
       height: 4em;
       font-size: 100%;
     }
-    textarea#export {
-      font-size: 8pt;
+    .export {
       margin-top: 100px;
+    }
+    .export textarea {
+      font-size: 8pt;
     }
     </style>
   </head>
@@ -193,6 +195,40 @@
       });
 
       var Tree = React.createClass({
+        getInitialState: function () {
+          return { exportShown: false };
+        },
+        toggleImportExport: function () {
+          this.setState({ exportShown: !this.state.exportShown });
+        },
+        doImport: function () {
+          if (!confirm('This will delete everything and replace it with what\'s in the box below, okay?')) {
+            return;
+          }
+
+          var json = this.refs.importTextArea.getDOMNode().value;
+          try {
+            var newTree = JSON.parse(json);
+          } catch (e) {
+            alert('That code is invalid: ' + e.message);
+            return;
+          }
+
+          this.setState({ exportShown: false });
+          save(newTree);
+          tree = load();
+          pushPath('/');
+        },
+        doReset: function () {
+          if (!confirm('This will delete everything, okay?')) {
+            return;
+          }
+
+          this.setState({ exportShown: false });
+          reset();
+          tree = load();
+          pushPath('/');
+        },
         nodeCreated: function (values) {
           var node = {
             id: String(Math.random()).replace(/[^0-9]/g, ''),
@@ -264,11 +300,27 @@
 
           var editAnswer = focusedNode.answer == '';
 
+          var importExportNode;
+          if (this.state.exportShown) {
+            importExportNode = (
+              <div>
+                Copy the code in the box below to a file or something for safe keeping. Replace it with another code and hit &ldquo;Import&rdquo; to import.
+                <textarea ref="importTextArea" defaultValue={JSON.stringify(this.props.tree, null, 2)} /><br />
+                <button onClick={this.doImport}>Import</button>
+                {' '}<button onClick={this.doReset}>Reset Everything</button>
+              </div>
+            );
+          }
+
           return (
             <div>
               {parentNodes}
               <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} startEditingAnswer={editAnswer} onCreate={this.nodeCreated} onEdit={this.edited} onDeleteRequest={this.deleteRequested} />
-              <textarea id="export" value={JSON.stringify(this.props.tree, null, 2)} />
+
+              <div className="export">
+                <button onClick={this.toggleImportExport}>{this.state.exportShown ? 'Hide' : 'Show'} Import/Export/Reset</button>
+                {importExportNode}
+              </div>
             </div>
           );
         }
@@ -285,6 +337,10 @@
 
       function save(tree) {
         localStorage.setItem("tree", JSON.stringify(tree));
+      }
+
+      function reset() {
+        localStorage.removeItem('tree');
       }
 
       function render(focusedNodeId) {
