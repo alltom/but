@@ -117,6 +117,9 @@
         childEditClicked: function (node) {
           pushPath(nodePath(node) + '#editQuestion');
         },
+        childDeleteClicked: function (node) {
+          this.props.onDeleteRequest(node);
+        },
         newQuestionSubmitted: function (e) {
           e.preventDefault();
           this.props.onCreate({ question: e.target.elements[0].value, parentID: this.props.node.id });
@@ -128,6 +131,7 @@
               <li>
                 <a href={nodePath(node)} onClick={handlePushStateClick}>{node.question}</a>
                 {' '}<button onClick={this.childEditClicked.bind(this, node)}>Edit &rarr;</button>
+                {' '}<button onClick={this.childDeleteClicked.bind(this, node)}>Delete&#8230;</button>
               </li>
             );
           }.bind(this));
@@ -204,6 +208,22 @@
           this.setState({});
           save(this.props.tree);
         },
+        deleteRequested: function (node) {
+          var children = this._allChildNodes(node);
+          var message = 'Are you sure you want to delete this question and its answer?\n\n';
+          if (children.length === 0) {
+            message += 'This question\'s answer has no other questions yet.';
+          } else {
+            message += 'This question has ' + children.length + ' nested question' + (children.length === 1 ? '' : 's') + '.';
+          }
+          if (confirm(message)) {
+            this.props.tree.nodes = this.props.tree.nodes.filter(function (n) {
+              return node !== n && children.indexOf(n) === -1;
+            });
+            this.setState({});
+            save(this.props.tree);
+          }
+        },
         _nodeWithID: function (id) {
           return this.props.tree.nodes.filter(function (node) { return node.id === id })[0];
         },
@@ -218,6 +238,15 @@
             id = parent.parentID;
           }
           return parents.reverse();
+        },
+        _allChildNodes: function (node) {
+          var queue = [node.id], children = [];
+          while (queue.length > 0) {
+            var nodes = this._nodesWithParentID(queue.shift());
+            queue.push.apply(queue, nodes.map(function (node) { return node.id }));
+            children.push.apply(children, nodes);
+          }
+          return children;
         },
         render: function () {
           var focusedNode = this._nodeWithID(this.props.focusedNodeId);
@@ -238,7 +267,7 @@
           return (
             <div>
               {parentNodes}
-              <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} startEditingAnswer={editAnswer} onCreate={this.nodeCreated} onEdit={this.edited} />
+              <Node node={focusedNode} childNodes={children} key={focusedNode.id} startEditingQuestion={editQuestion} startEditingAnswer={editAnswer} onCreate={this.nodeCreated} onEdit={this.edited} onDeleteRequest={this.deleteRequested} />
               <textarea id="export" value={JSON.stringify(this.props.tree, null, 2)} />
             </div>
           );
